@@ -1,110 +1,145 @@
 import { useState } from "react";
 
-export default function App() {
-  const [previews, setPreviews] = useState([]);
-  const [processing, setProcessing] = useState(false);
+/**
+ * Resize image BEFORE background removal (huge speed boost)
+ */
+const resizeImage = (file, maxSize = 1024) => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.src = URL.createObjectURL(file);
 
-  const handleUpload = (e) => {
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      const scale = Math.min(maxSize / img.width, maxSize / img.height, 1);
+
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+      canvas.toBlob((blob) => resolve(blob), "image/jpeg", 0.9);
+    };
+  });
+};
+
+/**
+ * remove.bg API call
+ */
+const removeBackground = async (file) => {
+  const formData = new FormData();
+  formData.append("image_file", file);
+  formData.append("size", "auto");
+
+  const res = await fetch("https://api.remove.bg/v1.0/removebg", {
+    method: "POST",
+    headers: {
+      "X-Api-Key": import.meta.env.VITE_REMOVEBG_API_KEY,
+    },
+    body: formData,
+  });
+
+  if (!res.ok) throw new Error("Background removal failed");
+  return await res.blob();
+};
+
+export default function App() {
+  const [processing, setProcessing] = useState(false);
+  const [result, setResult] = useState(null);
+
+  const handleUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    const img = new Image();
-    img.onload = () => generateSingleImage(img);
-    img.src = URL.createObjectURL(file);
-  };
+    try {
+      setProcessing(true);
 
-  const generateSingleImage = async (sourceImage) => {
-    setProcessing(true);
+      // 1️⃣ Resize image (FAST)
+      const resized = await resizeImage(file);
 
-    const canvas = document.createElement("canvas");
-    canvas.width = 2000;
-    canvas.height = 2000;
-    const ctx = canvas.getContext("2d");
+      // 2️⃣ Remove background
+      const transparentBlob = await removeBackground(resized);
 
-    // Pure white background
-    ctx.fillStyle = "#FFFFFF";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+      // 3️⃣ Create Meesho-style image
+      const img = new Image();
+      img.src = URL.createObjectURL(transparentBlob);
 
-    // Meesho-friendly scale (product looks smaller)
-    const scale = 0.75; // ~65–70% occupancy
-    const drawWidth = sourceImage.width * scale;
-    const drawHeight = sourceImage.height * scale;
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        canvas.width = 2000;
+        canvas.height = 2000;
 
-    const x = (canvas.width - drawWidth) / 2;
-    const y = (canvas.height - drawHeight) / 2;
+        const ctx = canvas.getContext("2d");
 
-    ctx.drawImage(sourceImage, x, y, drawWidth, drawHeight);
+        // White background
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    const blob = await new Promise((resolve) =>
-      canvas.toBlob(resolve, "image/jpeg", 0.85)
-    );
+        // Product small (≈65%)
+        const scale = 0.65;
+        const w = img.width * scale;
+        const h = img.height * scale;
 
-    setPreviews([
-      {
-        url: URL.createObjectURL(blob),
-        blob,
-        name: "meesho_optimized.jpg",
-      },
-    ]);
+        const x = (canvas.width - w) / 2;
+        const y = (canvas.height - h) / 2;
 
-    setProcessing(false);
+        ctx.drawImage(img, x, y, w, h);
+
+        canvas.toBlob(
+          (blob) => {
+            setResult(URL.createObjectURL(blob));
+            setProcessing(false);
+          },
+          "image/jpeg",
+          0.9
+        );
+      };
+    } catch (err) {
+      alert("Error processing image");
+      setProcessing(false);
+    }
   };
 
   const downloadImage = () => {
-    if (!previews.length) return;
-
-    const link = document.createElement("a");
-    link.href = previews[0].url;
-    link.download = previews[0].name;
-    link.click();
+    const a = document.createElement("a");
+    a.href = result;
+    a.download = "meesho_product.jpg";
+    a.click();
 
     // Refresh app after download
-    setTimeout(() => {
-      window.location.reload();
-    }, 300);
+    setTimeout(() => window.location.reload(), 500);
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 p-6">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold mb-2">
-          Meesho Product Image Optimizer
-        </h1>
-        <p className="text-gray-600 mb-6">
-          Upload an image to instantly get a Meesho-ready product image
+    <div className="min-h-screen flex items-center justify-center bg-gray-100 p-6">
+      <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md text-center">
+        <h1 className="text-2xl font-bold mb-2">Meesho Image Optimizer</h1>
+        <p className="text-sm text-gray-500 mb-6">
+          Upload → White BG → Small Product → Download
         </p>
 
-        <div className="bg-white p-6 rounded-2xl shadow">
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handleUpload}
-            className="mb-4 cursor-pointer"
-          />
+        <input
+          type="file"
+          accept="image/*"
+          onChange={handleUpload}
+          className="mb-4"
+        />
 
-          {processing && (
-            <p className="text-sm text-gray-500">Processing image…</p>
-          )}
-        </div>
+        {processing && (
+          <p className="text-sm text-gray-600">
+            Removing background… (3–5 sec)
+          </p>
+        )}
 
-        {previews.length > 0 && (
+        {result && (
           <>
-            <div className="mt-8 flex justify-center">
-              <img
-                src={previews[0].url}
-                alt="Optimized Preview"
-                className="rounded-xl border max-w-md"
-              />
-            </div>
-
-            <div className="flex justify-center">
-              <button
-                onClick={downloadImage}
-                className="mt-6 bg-green-600 text-white px-8 py-3 rounded-xl cursor-pointer"
-              >
-                Download Image
-              </button>
-            </div>
+            <img src={result} alt="Result" className="mt-6 rounded-xl border" />
+            <button
+              onClick={downloadImage}
+              className="mt-6 bg-black text-white px-6 py-2 rounded-xl"
+            >
+              Download Image
+            </button>
           </>
         )}
       </div>
