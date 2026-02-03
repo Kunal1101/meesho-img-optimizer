@@ -105,9 +105,6 @@ export default function App() {
     a.href = result;
     a.download = "meesho_product.jpg";
     a.click();
-
-    // Refresh app after download
-    setTimeout(() => window.location.reload(), 500);
   };
 
   return (
@@ -122,9 +119,13 @@ export default function App() {
           type="file"
           accept="image/*"
           onChange={handleUpload}
-          className="mb-4"
+          className="mb-4 block w-full text-sm text-gray-600
+             file:mr-4 file:py-2 file:px-4
+             file:rounded-xl file:border-0
+             file:text-sm file:font-semibold
+             file:bg-black file:text-white
+             hover:file:bg-gray-800 cursor-pointer"
         />
-
         {processing && (
           <p className="text-sm text-gray-600">
             Removing background… (3–5 sec)
@@ -134,12 +135,21 @@ export default function App() {
         {result && (
           <>
             <img src={result} alt="Result" className="mt-6 rounded-xl border" />
-            <button
-              onClick={downloadImage}
-              className="mt-6 bg-black text-white px-6 py-2 rounded-xl"
-            >
-              Download Image
-            </button>
+            <div className="d-flex align-middle mt-3">
+              <button
+                onClick={downloadImage}
+                className="bg-gray-200 mr-2 text-gray-800 px-6 py-2 rounded-xl hover:bg-gray-300 cursor-pointer"
+              >
+                Download Image
+              </button>
+
+              <button
+                onClick={() => setTimeout(() => window.location.reload(), 500)}
+                className="bg-green-600 text-white px-8 py-2 rounded-xl hover:bg-green-700 cursor-pointer"
+              >
+                Retry
+              </button>
+            </div>
           </>
         )}
       </div>
