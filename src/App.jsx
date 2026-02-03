@@ -1,9 +1,6 @@
 import { useState } from "react";
-import JSZip from "jszip";
-import { saveAs } from "file-saver";
 
 export default function App() {
-  const [image, setImage] = useState(null);
   const [previews, setPreviews] = useState([]);
   const [processing, setProcessing] = useState(false);
 
@@ -12,13 +9,11 @@ export default function App() {
     if (!file) return;
 
     const img = new Image();
-    img.onload = () => setImage(img);
+    img.onload = () => generateSingleImage(img);
     img.src = URL.createObjectURL(file);
   };
 
-  const generateImages = async () => {
-    if (!image) return;
-
+  const generateSingleImage = async (sourceImage) => {
     setProcessing(true);
 
     const canvas = document.createElement("canvas");
@@ -30,17 +25,15 @@ export default function App() {
     ctx.fillStyle = "#FFFFFF";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Fixed scale (20% reduction → perfectly within 18–22%)
-    const scale = 0.8;
+    // Meesho-friendly scale (product looks smaller)
+    const scale = 0.75; // ~65–70% occupancy
+    const drawWidth = sourceImage.width * scale;
+    const drawHeight = sourceImage.height * scale;
 
-    const drawWidth = image.width * scale;
-    const drawHeight = image.height * scale;
-
-    // Perfect center
     const x = (canvas.width - drawWidth) / 2;
     const y = (canvas.height - drawHeight) / 2;
 
-    ctx.drawImage(image, x, y, drawWidth, drawHeight);
+    ctx.drawImage(sourceImage, x, y, drawWidth, drawHeight);
 
     const blob = await new Promise((resolve) =>
       canvas.toBlob(resolve, "image/jpeg", 0.85)
@@ -64,15 +57,21 @@ export default function App() {
     link.href = previews[0].url;
     link.download = previews[0].name;
     link.click();
+
+    // Refresh app after download
+    setTimeout(() => {
+      window.location.reload();
+    }, 300);
   };
+
   return (
     <div className="min-h-screen bg-gray-100 p-6">
-      <div className="max-w-5xl mx-auto">
+      <div className="max-w-4xl mx-auto">
         <h1 className="text-3xl font-bold mb-2">
           Meesho Product Image Optimizer
         </h1>
         <p className="text-gray-600 mb-6">
-          Upload one product image and generate 10–20 Meesho-compliant images
+          Upload an image to instantly get a Meesho-ready product image
         </p>
 
         <div className="bg-white p-6 rounded-2xl shadow">
@@ -83,34 +82,29 @@ export default function App() {
             className="mb-4 cursor-pointer"
           />
 
-          <button
-            onClick={generateImages}
-            disabled={!image || processing}
-            className="bg-black text-white px-6 py-2 rounded-xl disabled:opacity-50 cursor-pointer"
-          >
-            {processing ? "Processing..." : "Generate Images"}
-          </button>
+          {processing && (
+            <p className="text-sm text-gray-500">Processing image…</p>
+          )}
         </div>
 
         {previews.length > 0 && (
           <>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-8">
-              {previews.map((img, i) => (
-                <img
-                  key={i}
-                  src={img.url}
-                  alt="preview"
-                  className="rounded-xl border"
-                />
-              ))}
+            <div className="mt-8 flex justify-center">
+              <img
+                src={previews[0].url}
+                alt="Optimized Preview"
+                className="rounded-xl border max-w-md"
+              />
             </div>
 
-            <button
-              onClick={downloadImage}
-              className="mt-6 bg-green-600 text-white px-8 py-3 rounded-xl"
-            >
-              Download Image
-            </button>
+            <div className="flex justify-center">
+              <button
+                onClick={downloadImage}
+                className="mt-6 bg-green-600 text-white px-8 py-3 rounded-xl cursor-pointer"
+              >
+                Download Image
+              </button>
+            </div>
           </>
         )}
       </div>
