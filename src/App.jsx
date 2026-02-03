@@ -29,7 +29,7 @@ export default function App() {
     const response = await fetch("https://api.remove.bg/v1.0/removebg", {
       method: "POST",
       headers: {
-        "X-Api-Key": "MkVAByRznH1xbY7yccC34SSD", // ⬅️ add your key
+        "X-Api-Key": import.meta.env.VITE_REMOVEBG_API_KEY, // ⬅️ add your key
       },
       body: formData,
     });
