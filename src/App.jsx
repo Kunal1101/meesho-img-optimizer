@@ -1,6 +1,5 @@
 import { useState } from "react";
 
-const [fileName, setFileName] = useState("");
 /**
  * Resize image BEFORE background removal
  */
@@ -44,7 +43,9 @@ const removeBackground = async (file) => {
   return await res.blob();
 };
 
-export default function App() {
+const App = () => {
+  const [fileName, setFileName] = useState("");
+
   const [processing, setProcessing] = useState(false);
   const [result, setResult] = useState(null);
 
@@ -163,4 +164,6 @@ export default function App() {
       </div>
     </div>
   );
-}
+};
+
+export default App;
