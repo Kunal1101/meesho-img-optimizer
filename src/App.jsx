@@ -1,7 +1,8 @@
 import { useState } from "react";
 
+const [fileName, setFileName] = useState("");
 /**
- * Resize image BEFORE background removal (huge speed boost)
+ * Resize image BEFORE background removal
  */
 const resizeImage = (file, maxSize = 1024) => {
   return new Promise((resolve) => {
@@ -24,7 +25,7 @@ const resizeImage = (file, maxSize = 1024) => {
 };
 
 /**
- * remove.bg API call
+ * remove.bg API
  */
 const removeBackground = async (file) => {
   const formData = new FormData();
@@ -49,25 +50,28 @@ export default function App() {
 
   const handleUpload = async (e) => {
     const file = e.target.files[0];
+    setFileName(file.name.replace(/\.[^/.]+$/, ""));
     if (!file) return;
 
     try {
       setProcessing(true);
 
-      // 1️⃣ Resize image (FAST)
+      // 1️⃣ Resize image
       const resized = await resizeImage(file);
 
       // 2️⃣ Remove background
       const transparentBlob = await removeBackground(resized);
 
-      // 3️⃣ Create Meesho-style image
+      // 3️⃣ Create final image
       const img = new Image();
       img.src = URL.createObjectURL(transparentBlob);
 
       img.onload = () => {
         const canvas = document.createElement("canvas");
-        canvas.width = 2000;
-        canvas.height = 2000;
+
+        // ✅ FINAL IMAGE SIZE
+        canvas.width = 747;
+        canvas.height = 695;
 
         const ctx = canvas.getContext("2d");
 
@@ -75,8 +79,12 @@ export default function App() {
         ctx.fillStyle = "#ffffff";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Product small (≈65%)
-        const scale = 0.65;
+        // 🔥 BIG PRODUCT (85% of canvas)
+        const scale = Math.min(
+          (canvas.width * 0.9) / img.width,
+          (canvas.height * 0.9) / img.height
+        );
+
         const w = img.width * scale;
         const h = img.height * scale;
 
@@ -84,6 +92,11 @@ export default function App() {
         const y = (canvas.height - h) / 2;
 
         ctx.drawImage(img, x, y, w, h);
+
+        // 🟣 PURPLE BORDER
+        ctx.strokeStyle = "#7e22ce";
+        ctx.lineWidth = 30;
+        ctx.strokeRect(3, 3, canvas.width - 6, canvas.height - 6);
 
         canvas.toBlob(
           (blob) => {
@@ -103,17 +116,14 @@ export default function App() {
   const downloadImage = () => {
     const a = document.createElement("a");
     a.href = result;
-    a.download = "meesho_product.jpg";
+    a.download = `${fileName}_747x695.jpg`;
     a.click();
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100 p-6">
       <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md text-center">
-        <h1 className="text-2xl font-bold mb-2">Meesho Image Optimizer</h1>
-        <p className="text-sm text-gray-500 mb-6">
-          Upload → White BG → Small Product → Download
-        </p>
+        <h1 className="text-2xl font-bold mb-2">Image Optimizer</h1>
 
         <input
           type="file"
@@ -126,26 +136,24 @@ export default function App() {
              file:bg-black file:text-white
              hover:file:bg-gray-800 cursor-pointer"
         />
+
         {processing && (
-          <p className="text-sm text-gray-600">
-            Removing background… (3–5 sec)
-          </p>
+          <p className="text-sm text-gray-600">Processing image…</p>
         )}
 
         {result && (
           <>
             <img src={result} alt="Result" className="mt-6 rounded-xl border" />
-            <div className="d-flex align-middle mt-3">
+            <div className="flex justify-center mt-4 gap-3">
               <button
                 onClick={downloadImage}
-                className="bg-gray-200 mr-2 text-gray-800 px-6 py-2 rounded-xl hover:bg-gray-300 cursor-pointer"
+                className="bg-gray-200 text-gray-800 px-6 py-2 rounded-xl hover:bg-gray-300"
               >
-                Download Image
+                Download
               </button>
-
               <button
-                onClick={() => setTimeout(() => window.location.reload(), 500)}
-                className="bg-green-600 text-white px-8 py-2 rounded-xl hover:bg-green-700 cursor-pointer"
+                onClick={() => window.location.reload()}
+                className="bg-green-600 text-white px-8 py-2 rounded-xl hover:bg-green-700"
               >
                 Retry
               </button>
