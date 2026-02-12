@@ -82,8 +82,8 @@ const App = () => {
 
         // 🔥 BIG PRODUCT (85% of canvas)
         const scale = Math.min(
-          (canvas.width * 0.9) / img.width,
-          (canvas.height * 0.9) / img.height
+          (canvas.width * 0.5) / img.width,
+          (canvas.height * 0.5) / img.height
         );
 
         const w = img.width * scale;
@@ -144,7 +144,7 @@ const App = () => {
 
         {result && (
           <>
-            <img src={result} alt="Result" className="mt-6 rounded-xl border" />
+            <img src={result} alt="Result" className="mt-6" />
             <div className="flex justify-center mt-4 gap-3">
               <button
                 onClick={downloadImage}
