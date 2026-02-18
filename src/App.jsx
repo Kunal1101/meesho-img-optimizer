@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { removeBackground } from "@imgly/background-removal";
 
 /**
  * Resize image BEFORE background removal
@@ -23,24 +24,9 @@ const resizeImage = (file, maxSize = 1024) => {
   });
 };
 
-/**
- * remove.bg API
- */
-const removeBackground = async (file) => {
-  const formData = new FormData();
-  formData.append("image_file", file);
-  formData.append("size", "auto");
-
-  const res = await fetch("https://api.remove.bg/v1.0/removebg", {
-    method: "POST",
-    headers: {
-      "X-Api-Key": import.meta.env.VITE_REMOVEBG_API_KEY,
-    },
-    body: formData,
-  });
-
-  if (!res.ok) throw new Error("Background removal failed");
-  return await res.blob();
+const removeBgLocal = async (file) => {
+  const blob = await removeBackground(file);
+  return blob;
 };
 
 const App = () => {
@@ -61,7 +47,7 @@ const App = () => {
       const resized = await resizeImage(file);
 
       // 2️⃣ Remove background
-      const transparentBlob = await removeBackground(resized);
+      const transparentBlob = await removeBgLocal(resized);
 
       // 3️⃣ Create final image
       const img = new Image();
@@ -71,8 +57,8 @@ const App = () => {
         const canvas = document.createElement("canvas");
 
         // ✅ FINAL IMAGE SIZE
-        canvas.width = 747;
-        canvas.height = 695;
+        canvas.width = 2000;
+        canvas.height = 2000;
 
         const ctx = canvas.getContext("2d");
 
@@ -82,8 +68,8 @@ const App = () => {
 
         // 🔥 BIG PRODUCT (85% of canvas)
         const scale = Math.min(
-          (canvas.width * 0.5) / img.width,
-          (canvas.height * 0.5) / img.height
+          (canvas.width * 0.3) / img.width,
+          (canvas.height * 0.3) / img.height
         );
 
         const w = img.width * scale;
@@ -95,9 +81,9 @@ const App = () => {
         ctx.drawImage(img, x, y, w, h);
 
         // 🟣 PURPLE BORDER
-        ctx.strokeStyle = "#7e22ce";
-        ctx.lineWidth = 30;
-        ctx.strokeRect(3, 3, canvas.width - 6, canvas.height - 6);
+        // ctx.strokeStyle = "#7e22ce";
+        // ctx.lineWidth = 30;
+        // ctx.strokeRect(3, 3, canvas.width - 6, canvas.height - 6);
 
         canvas.toBlob(
           (blob) => {
